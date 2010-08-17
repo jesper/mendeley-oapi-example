@@ -1,14 +1,27 @@
 """
 Mendeley Open API Example Client
-by Ben Dowling <ben.dowling@mendeley.com>
 
-For details of the Mendeley Open API see http://www.mendeley.com/oapi/
+Copyright (c) 2010, Mendeley Ltd. <copyright@mendeley.com>
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+For details of the Mendeley Open API see http://dev.mendeley.com/
 
 Example usage:
 
 >>> from pprint import pprint
 >>> from mendeley_client import MendeleyClient
->>> mendeley = MendeleyClient('949812037e4cbf1b8011754292e8d9e904bfcffcf', '182413d860155fcc9dc2f113b1994437')
+>>> mendeley = MendeleyClient('<consumer_key>', '<secret_key>')
 >>> try:
 >>> 	mendeley.load_keys()
 >>> except IOError:
@@ -39,6 +52,7 @@ Example usage:
  u'title': u'NoSQL(EU) Write Up',
  u'year': 2010}
 """
+from pprint import pprint
 import oauth2 as oauth
 import pickle
 import httplib
@@ -46,7 +60,7 @@ import json
 import urllib
 
 class OAuthClient(object):
-	"""General pupose OAuth client"""
+	"""General purpose OAuth client"""
 	def __init__(self, consumer_key, consumer_secret, options = {}):
 		# Set values based on provided options, or revert to defaults
 		self.host = options.get('host', 'www.mendeley.com')
@@ -80,13 +94,31 @@ class OAuthClient(object):
 			parameters=post_params
 		)
 		return self._send_request(request, token)
+	
+	def delete(self, path, token=None):
+		url = "http://%s%s" % (self.host, path)
+		request = oauth.Request.from_consumer_and_token(
+			self.consumer, 
+			token, 
+			http_method='DELETE', 
+			http_url=url, 
+		)
+		return self._send_request(request, token)
+
+	def put(self, path, post_params, token=None):
+		url = "http://%s%s" % (self.host, path)
+		request = oauth.Request.from_consumer_and_token(
+			self.consumer,
+			token,
+			http_method='PUT',
+			http_url=url,
+			parameters=post_params
+		)
+		return self._send_request(request, token)
 
 	def request_token(self):
 		response = self.get(self.request_token_url).read()
-		try:
-			token = oauth.Token.from_string(response)
-		except ValueError:
-			raise Exception("Token not returned from server: %s" % response)
+		token = oauth.Token.from_string(response)
 		return token 
 	
 	def authorize(self, token, callback_url = "oob"):
@@ -102,7 +134,10 @@ class OAuthClient(object):
 		request.sign_request(oauth.SignatureMethod_HMAC_SHA1(), self.consumer, token)
 		conn = self._get_conn()
 		if request.method == 'POST':
+			body=request.to_postdata()
 			conn.request('POST', request.url, body=request.to_postdata(), headers={"Content-type": "application/x-www-form-urlencoded"})
+		elif request.method == 'DELETE':
+			conn.request('DELETE', request.url, headers=request.to_header())
 		else:
 			conn.request('GET', request.url, headers=request.to_header())
 		return conn.getresponse()
@@ -118,7 +153,6 @@ class MendeleyRemoteMethod(object):
 	
 	def __call__(self, *args, **kwargs):
 		url = self.details['url']
-
 		# Get the required arguments 
 		if self.details.get('required'):
 			required_args = dict(zip(self.details.get('required'), args))
@@ -140,14 +174,12 @@ class MendeleyRemoteMethod(object):
 		response = self.callback(url, self.details.get('access_token_required', False), self.details.get('method', 'get'), optional_args)
 		status = response.status
 		body = response.read()
+		print body
 		if status == 500:
 			raise Exception(body)
-				
-		data = json.loads(body)
-
-		if status != 200:
-			raise Exception(data['error'])
-		return data
+		if status != 204:
+			data = json.loads(body)
+			return data
 
 class MendeleyClient(object):
 	# API method definitions. Used to create MendeleyRemoteMethod instances
@@ -172,6 +204,11 @@ class MendeleyClient(object):
 		'tagged': {
 			'url': '/oapi/documents/tagged/%(tag)s/',
 			'required': ['tag'],
+			'optional': ['cat', 'subcat', 'page', 'items'],
+		},
+		'related': {
+			'url': '/oapi/documents/related/%(id)s/', 
+			'required': ['id'],
 			'optional': ['page', 'items'],
 		},
 		'authored': {
@@ -188,7 +225,7 @@ class MendeleyClient(object):
 			'optional': ['discipline', 'upandcoming'],
 		},
 		'publication_stats': {
-			'url': '/oapi/stats/publications/',
+			'url': '/oapi/stats/authors/',
 			'optional': ['discipline', 'upandcoming'],
 		},
 		'tag_stats': {
@@ -223,8 +260,12 @@ class MendeleyClient(object):
 			'access_token_required': True,
 		},
 		'document_details': {
-			'url': '/oapi/library/documents/details/%(id)s/',
+			'url': '/oapi/library/documents/%(id)s/',
 			'required': ['id'],
+			'access_token_required': True,
+		},
+		'documents_authored': {
+			'url': '/oapi/library/documents/authored/',
 			'access_token_required': True,
 		},
 		'collection_documents': {
@@ -239,64 +280,87 @@ class MendeleyClient(object):
 			'optional': ['page', 'items'],
 			'access_token_required': True,
 		},
+		'sharedcollection_members': {
+			'url': '/oapi/library/sharedcollections/%(id)s/members/', 
+			'required': ['id'],
+			'access_token_required': True,
+		},
 		# Write methods
 		'delete_collection': {
-			'url': '/oapi/library/collections/remove/%(id)s/',
+			'url': '/oapi/library/collections/%(id)s/',
 			'required': ['id'],
 			'access_token_required': True,
-			'method': 'post',
+			'method': 'delete',
 		},
 		'delete_sharedcollection': {
-			'url': '/oapi/library/sharedcollections/remove/%(id)s/',
+			'url': '/oapi/library/sharedcollections/%(id)s/',
 			'required': ['id'],
 			'access_token_required': True,
-			'method': 'post',
+			'method': 'delete',
 		},
 		'create_collection': {
-			'url': '/oapi/library/collections/create/%(name)s/',
-			'required': ['name'],
-			'optional': ['public'],
+			'url': '/oapi/library/collections/',
+			# HACK: 'collection' is required, but by making it optional here it'll get POSTed
+			# Unfortunately that means it needs to be a named param when calling this method
+			'optional': ['collection'],
 			'access_token_required': True,
 			'method': 'post',
 		},
 		'create_sharedcollection': {
-			'url': '/oapi/library/sharedcollections/create/%(name)s/',
-			'required': ['name'],
+			'url': '/oapi/library/sharedcollections/',
+			'optional': ['sharedcollection'],
 			'access_token_required': True,
 			'method': 'post',
 		},
 		'add_document_to_collection': {
-			'url': '/oapi/library/collections/add/%(collection_id)d/%(document_id)s/',
+			'url': '/oapi/library/collections/add/%(collection_id)s/%(document_id)s/',
 			'required': ['collection_id', 'document_id'],
 			'access_token_required': True,
 			'method': 'post',
 		},
 		'remove_document_from_collection': {
-			'url': '/oapi/library/collections/remove/%(collection_id)d/%(document_id)s/',
+			'url': '/oapi/library/collections/%(collection_id)s/%(document_id)s/',
 			'required': ['collection_id', 'document_id'],
 			'access_token_required': True,
-			'method': 'post',
+			'method': 'delete',
 		},
 		'delete_sharedcollection_document': {
-			'url': '/oapi/library/sharedcollections/remove/%(collection_id)d/%(document_id)s/',
+			'url': '/oapi/library/sharedcollections/%(collection_id)s/%(document_id)s/',
 			'required': ['collection_id', 'document_id'],
 			'access_token_required': True,
-			'method': 'post',
+			'method': 'delete',
 		},
 		'delete_library_document': {
-			'url': '/oapi/library/documents/remove/%(id)s/',
+			'url': '/oapi/library/documents/%(id)s/',
 			'required': ['id'],
 			'access_token_required': True,
-			'method': 'post',
+			'method': 'delete',
 		},
 		'create_document': {
-			'url': '/oapi/library/documents/create/',
+			'url': '/oapi/library/documents/',
 			# HACK: 'document' is required, but by making it optional here it'll get POSTed
 			# Unfortunately that means it needs to be a named param when calling this method
 			'optional': ['document'],
 			'access_token_required': True,
 			'method': 'post',
-		},		
+		},
+		'contacts': {
+			'url': '/oapi/profiles/contacts/',
+			'access_token_required': True,
+		        'method': 'get',	
+		}, 
+		'contacts_of_contact': {
+			'url': '/oapi/profiles/contacts/%(id)s/', 
+			'required': ['id'],
+			'access_token_required': True, 
+			'method': 'get',
+		},
+		'add_contact': {
+			'url': '/oapi/profiles/contacts/%(id)s/',
+			'required': ['id'],
+			'access_token_required': True,
+			'method': 'post',
+		}
 	}
 
 	def __init__(self, consumer_key, consumer_secret):
@@ -313,6 +377,8 @@ class MendeleyClient(object):
 			if len(params) > 0:
 				url += "?%s" % urllib.urlencode(params)
 			response = self.mendeley.get(url, access_token)
+		elif method == 'delete':
+			response = self.mendeley.delete(url, access_token)
 		else:
 			response = self.mendeley.post(url, params, access_token)
 		return response

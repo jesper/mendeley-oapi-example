@@ -31,204 +31,289 @@ import os
 mendeley = MendeleyClient('<insert_consumer_key_here>', '<insert_secret_key_here>')
 
 try:
-	mendeley.load_keys()
+    mendeley.load_keys()
 except IOError:
-	mendeley.get_required_keys()
-	mendeley.save_keys()
+    mendeley.get_required_keys()
+    mendeley.save_keys()
 
-########## Public Methods Tests ##########
+########################################
+######## Public Resources Tests ########
+########################################
 
-### Stats ###
-print 'Authors stats'
-response = mendeley.author_stats()
+print """
+
+-----------------------------------------------------
+Canonical document details
+-----------------------------------------------------"""
+response = mendeley.details('cbcca150-6cff-11df-a2b2-0026b95e3eb7')
 pprint(response)
 
-print 'Papers stats'
-response = mendeley.paper_stats()
+print """
+
+-----------------------------------------------------
+Canonical document details DOI look up
+-----------------------------------------------------"""
+response = mendeley.details('10.1371%2Fjournal.ppat.1000281', type='doi')
 pprint(response)
 
-print 'Publication stats'
-response = mendeley.publication_stats()
+print """
+
+-----------------------------------------------------
+Canonical document details PubMed Id look up
+-----------------------------------------------------"""
+response = mendeley.details('19910365', type='pmid')
 pprint(response)
 
-print 'Tag stats'
-response = mendeley.tag_stats('6')
-pprint(response)
+print """
 
-### Search ###
-
-print 'Search for science'
-response = mendeley.search('science', items=5)
-pprint(response)
-
-### Authored ###
-
-print 'Authored by Ann Cowan'
-response = mendeley.authored('Ann Cowan', items=5)
-pprint(response)
-
-### Tagged ###
-
-print 'Tagged modularity'
-response = mendeley.tagged('modularity', items=5)
-pprint(response)
-
-print 'Tagged test in discipline 6 (computer science)'
-response = mendeley.tagged('test', cat=6)
-pprint(response)
-
-print 'Tagged modularity in subdiscipline Bioinformatics'
-response = mendeley.tagged('modularity', subcat=455)
-pprint(response)
-
-### Categories and subcategories ###
-
-print 'Categories'
+-----------------------------------------------------
+Categories
+-----------------------------------------------------"""
 response = mendeley.categories()
 pprint(response)
 
-print 'Subcategories'
+print """
+
+-----------------------------------------------------
+Subcategories
+-----------------------------------------------------"""
 response = mendeley.subcategories(3)
 pprint(response)
 
-#### Related ###
+print """
 
-print 'Get related ones'
+-----------------------------------------------------
+Search
+-----------------------------------------------------"""
+response = mendeley.search('phiC31', items=10)
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+Tagged 'modularity'
+-----------------------------------------------------"""
+response = mendeley.tagged('modularity', items=5)
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+Tagged 'test' in category 14
+-----------------------------------------------------"""
+response = mendeley.tagged('test', cat=14)
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+Tagged 'modularity' in subcategory 'Bioinformatics'
+-----------------------------------------------------"""
+response = mendeley.tagged('modularity', subcat=455)
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+Related
+-----------------------------------------------------"""
 response = mendeley.related('91df2740-6d01-11df-a2b2-0026b95e3eb7')
 pprint(response)
 
-#DOI lookup
+print """
 
-print 'DOI lookup'
-response = mendeley.details('10.1145%2F1323688.1323690', type='doi')
+-----------------------------------------------------
+Authored by 'Ann Cowan'
+-----------------------------------------------------"""
+response = mendeley.authored('Ann Cowan', items=5)
 pprint(response)
 
-# Details
 
-print 'Get details'
-response = mendeley.details('2c8d9cb0-6d00-11df-a2b2-0026b95e3eb7')
+print """
+
+-----------------------------------------------------
+Public groups
+-----------------------------------------------------"""
+response = mendeley.public_groups()
 pprint(response)
 
-########## User Specific Tests ##########
+groupId = '536181'
+print """
+
+-----------------------------------------------------
+Public group details
+-----------------------------------------------------"""
+response = mendeley.public_group_details(groupId)
+pprint(response)
+
+
+print """
+
+-----------------------------------------------------
+Public group documents
+-----------------------------------------------------"""
+response = mendeley.public_group_docs(groupId)
+pprint(response)
+
+
+print """
+
+-----------------------------------------------------
+Public group people
+-----------------------------------------------------"""
+response = mendeley.public_group_people(groupId)
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+Author statistics
+-----------------------------------------------------"""
+response = mendeley.author_stats()
+pprint(response)
+
+
+print """
+
+-----------------------------------------------------
+Papers statistics
+-----------------------------------------------------"""
+response = mendeley.paper_stats()
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+Publications outlets statistics
+-----------------------------------------------------"""
+response = mendeley.publication_stats()
+pprint(response)
+
+###############################################
+######## User Specific Resources Tests ########
+###############################################
+
+print """
+
+-----------------------------------------------------
+My Library authors statistics
+-----------------------------------------------------"""
+response = mendeley.library_author_stats()
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+My Library tag statistics
+-----------------------------------------------------"""
+response = mendeley.library_tag_stats()
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+My Library publication statistics
+-----------------------------------------------------"""
+response = mendeley.library_publication_stats()
+pprint(response)
 
 ### Library ###
 print 'Library'
+print """
+
+-----------------------------------------------------
+My Library documents
+-----------------------------------------------------"""
 documents = mendeley.library()
 pprint(documents)
 
-### Collections ###
+print """
 
-print 'Create new public collection called: "Create collection test"'
-response = mendeley.create_collection(collection=json.dumps({'name': 'Collection test'}))
-pprint(response)
-collectionId = response['collection_id']
-
-print 'Collections'
-collections = mendeley.collections()
-for collection in collections:
-	print collection
-
-### Shared Collections ###
-
-print 'Create a new Share Collection"'
-response = mendeley.create_sharedcollection(sharedcollection=json.dumps({'name': 'Shared collection to delete'}))
-sharedcollectionid = response['shared_collection_id']
-pprint(response)
-pprint(sharedcollectionid)
-
-'''print 'Shared Collections Members'
-shared = mendeley.sharedcollections()
-for share in shared:
-	print share
-	sharedId = share['id']
-	members = mendeley.sharedcollection_members(sharedId)
-	pprint(members)'''
-
-
-
-### Documents ###
-print 'Create new document on shared collection'
-response = mendeley.create_document(document=json.dumps({'title': 'Document Title for SHARED COLLECTION', 'year': 2008, 'shared_collection_id': sharedcollectionid}))
-pprint(response)
-sharedDocumentId = response['document_id']
-
-pprint(sharedcollectionid)
-docs = mendeley.sharedcollection_documents(sharedcollectionid)
-pprint(docs)
-
-print 'Remove document from shared collection'
-response = mendeley.delete_sharedcollection_document(sharedcollectionid, sharedDocumentId)
-pprint(response)
-
-docs = mendeley.sharedcollection_documents(sharedcollectionid)
-pprint(docs)
-
-print 'Remove shared collection'
-response = mendeley.delete_sharedcollection(sharedcollectionid)
-pprint(response)
-
-print 'Shared Collections'
-shared = mendeley.sharedcollections()
-for share in shared:
-	print share
-
-print 'Create new document on library'
-response = mendeley.create_document(document=json.dumps({'title': 'Document Title', 'year': 2010}))
+-----------------------------------------------------
+Create a new library document
+-----------------------------------------------------"""
+response = mendeley.create_document(document=json.dumps({'type' : 'Book','title': 'Document creation test', 'year': 2008}))
 pprint(response)
 documentId = response['document_id']
 
-print 'Add document to collection'
-response = mendeley.add_document_to_collection(collectionId, documentId)
-pprint(response)
+print """
 
-print 'List all documents in collection'
-docs_in_collection = mendeley.collection_documents(collectionId)
-pprint(docs_in_collection)
-
-print 'Remove document from collection'
-response = mendeley.remove_document_from_collection(collectionId, documentId)
-pprint(response)
-
-docs_in_collection = mendeley.collection_documents(collectionId)
-pprint(docs_in_collection)
-
-print 'Remove collection'
-response = mendeley.delete_collection(collectionId)
-pprint(response)
-
-### Documents ###
-
-print 'Listing all documents in library'
-response = mendeley.library()
-pprint(response)
-docs = response['document_ids']
-print 'Details for all docs in the library'
-for doc in docs:
-	response = mendeley.document_details(doc)
-	pprint(response)
-
-
-print 'Create new document in library'
-response = mendeley.create_document(document=json.dumps({'title': 'Document create test', 'year': 2010, 'Volume': 1, 'type': 'Journal Article', 'url': 'http://www.mendeley.com', 'tags':['test', 'journal']}))
-pprint(response)
-documentId = response['document_id']
-
+-----------------------------------------------------
+Document details
+-----------------------------------------------------"""
 response = mendeley.document_details(documentId)
 pprint(response)
 
-print 'Getting authored documents'
+print """
+
+-----------------------------------------------------
+Delete library document
+-----------------------------------------------------"""
+response = mendeley.delete_library_document(documentId)
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+Documents authored
+-----------------------------------------------------"""
 response = mendeley.documents_authored()
 pprint(response)
-for document in response['document_ids']:
-	details = mendeley.document_details(document)
-	pprint(details)
 
-print 'Getting library'
-response = mendeley.library(items=500)
+print """
+
+-----------------------------------------------------
+Create new folder
+-----------------------------------------------------"""
+response = mendeley.create_folder(folder=json.dumps({'name': 'Test folder creation'}))
+pprint(response)
+folderId = response['folder_id']
+
+print """
+
+-----------------------------------------------------
+List folders
+-----------------------------------------------------"""
+folders = mendeley.folders()
+pprint(folders)
+
+print """
+
+-----------------------------------------------------
+Delete folder
+-----------------------------------------------------"""
+response = mendeley.delete_folder(folderId)
 pprint(response)
 
-### MEMBERS ###
+print """
 
-print 'Getting current user contacts'
+-----------------------------------------------------
+Create public invite only group
+-----------------------------------------------------"""
+response = mendeley.create_group(group=json.dumps({'name':'Public invite only group', 'type': 'invite'}))
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+Create public open group
+-----------------------------------------------------"""
+response = mendeley.create_group(group=json.dumps({'name':'My awesome public group', 'type': 'open'}))
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+Create private group
+-----------------------------------------------------"""
+response = mendeley.create_group(group=json.dumps({'name':'Private group test', 'type': 'private'}))
+pprint(response)
+
+print """
+
+-----------------------------------------------------
+Current user's contacts
+-----------------------------------------------------"""
 response = mendeley.contacts()
 pprint(response)
+

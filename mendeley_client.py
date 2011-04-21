@@ -280,6 +280,13 @@ class MendeleyClient(object):
             'access_token_required': True,
             'method': 'post',
         },
+	'upload_pdf': {
+	    'url': '/oapi/library/documents/%(id)s/',
+	    'required': ['id'],
+            'optional': ['data', 'file_name', 'oauth_body_hash', 'sha1_hash'],
+            'access_token_required': True,
+            'method': 'put'
+	},
         'document_details': {
             'url': '/oapi/library/documents/%(id)s/',
             'required': ['id'],
@@ -481,14 +488,7 @@ class MendeleyClient(object):
             'required': ['collection_id', 'document_id'],
             'access_token_required': True,
             'method': 'delete',
-        },
-	'upload_pdf': {
-	    'url': '/oapi/library/documents/%(id)s/',
-	    'required': ['id'],
-            'optional': ['data', 'file_name', 'oauth_body_hash', 'sha1_hash'],
-            'access_token_required': True,
-            'method': 'put'
-	}
+        }
     }
 
     def __init__(self, consumer_key, consumer_secret):

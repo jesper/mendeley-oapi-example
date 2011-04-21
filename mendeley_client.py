@@ -63,7 +63,7 @@ class OAuthClient(object):
     """General purpose OAuth client"""
     def __init__(self, consumer_key, consumer_secret, options = {}):
         # Set values based on provided options, or revert to defaults
-        self.host = options.get('host', 'www.mendeley.com')
+        self.host = options.get('host', 'api.mendeley.com')
         self.port = options.get('port', 80)
         self.access_token_url = options.get('access_token_url', '/oauth/access_token/')
         self.request_token_url = options.get('access_token_url', '/oauth/request_token/')
@@ -130,11 +130,10 @@ class OAuthClient(object):
         response = self.get(self.access_token_url, request_token).read()
         return oauth.Token.from_string(response)
 
-    def _send_request(self, request, token=None):
+    def _send_request(self, request, token=None, body=None, extra_headers=None):
         request.sign_request(oauth.SignatureMethod_HMAC_SHA1(), self.consumer, token)
         conn = self._get_conn()
         if request.method == 'POST':
-            body=request.to_postdata()
             conn.request('POST', request.url, body=request.to_postdata(), headers={"Content-type": "application/x-www-form-urlencoded"})
         elif request.method == 'PUT':
             final_headers = request.to_header()
@@ -482,7 +481,14 @@ class MendeleyClient(object):
             'required': ['collection_id', 'document_id'],
             'access_token_required': True,
             'method': 'delete',
-        }
+        },
+	'upload_pdf': {
+	    'url': '/oapi/library/documents/%(id)s/',
+	    'required': ['id'],
+            'optional': ['data', 'file_name', 'oauth_body_hash', 'sha1_hash'],
+            'access_token_required': True,
+            'method': 'put'
+	}
     }
 
     def __init__(self, consumer_key, consumer_secret):

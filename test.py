@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Mendeley Open API Example Client
 
